@@ -50,6 +50,7 @@
 #include <geometry_msgs/Twist.h>
 #include <rosgraph_msgs/Clock.h>
 
+#include <stage_msgs/SetClockInterval.h>
 #include <std_srvs/Empty.h>
 
 #include "tf/transform_broadcaster.h"
@@ -104,6 +105,7 @@ private:
     // Used to remember initial poses for soft reset
     std::vector<Stg::Pose> initial_poses;
     ros::ServiceServer reset_srv_;
+    ros::ServiceServer set_clock_interval_srv_;
   
     ros::Publisher clock_pub_;
     
@@ -164,6 +166,10 @@ public:
 
     // Service callback for soft reset
     bool cb_reset_srv(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+
+    // Service callback for setting simulated clock interval
+    bool cb_set_clock_interval_srv(stage_msgs::SetClockInterval::Request& request,
+                                   stage_msgs::SetClockInterval::Response& response);
 
     // The main simulator object
     Stg::World* world;
@@ -259,7 +265,14 @@ StageNode::cb_reset_srv(std_srvs::Empty::Request& request, std_srvs::Empty::Resp
   return true;
 }
 
-
+bool
+StageNode::cb_set_clock_interval_srv(stage_msgs::SetClockInterval::Request& request,
+                                     stage_msgs::SetClockInterval::Response& response)
+{
+  ROS_INFO("Setting clock interval to %.2fs.", request.interval);
+  this->world->sim_interval = request.interval * 1000;
+  return true;
+}
 
 void
 StageNode::cmdvelReceived(int idx, const boost::shared_ptr<geometry_msgs::Twist const>& msg)
@@ -395,6 +408,8 @@ StageNode::SubscribeModels()
 
     // advertising reset service
     reset_srv_ = n_.advertiseService("reset_positions", &StageNode::cb_reset_srv, this);
+    // advertise service for setting simulated clock interval
+    set_clock_interval_srv_ = n_.advertiseService("set_clock_interval", &StageNode::cb_set_clock_interval_srv, this);
 
     return(0);
 }
